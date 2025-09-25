@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CSV Importer</title>
+
+    <!-- Dropzone CSS (pin to a stable build) -->
+    <link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>CSV Importer</h1>
+      <p class="notice">Drag & drop a <strong>.csv</strong> file into the box below (or click it). The server will parse and insert rows into the database.</p>
+
+      Current Status: <div id="status" class="status" role="status" aria-live="polite">Idle.</div>
+
+      <!-- The Dropzone element. The JS below will attach to this by ID. -->
+      <form id="csvDropzone" action="/upload" class="dropzone" enctype="multipart/form-data">
+        <div class="dz-message" data-dz-message>
+          <span>Drop your <strong>.csv</strong> here or click to select.</span>
+        </div>
+      </form>
+
+      <h2>Result</h2>
+      <pre id="result" aria-live="polite">Waiting…</pre>
+
+      <footer>Tip: This page is served from <code>/public</code>. The upload endpoint is <code>/upload</code> and must match your Express router.</footer>
+    </div>
+
+    <!-- Dropzone JS (must come before our init script) -->
+    <script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+    <script>
+    // must run before Dropzone loads
+    window.Dropzone = window.Dropzone || {};
+    window.Dropzone.autoDiscover = false;
+    </script>
+
+    <script>
+      // Initialize Dropzone once the DOM is ready, error handling if it fails to load
+      window.addEventListener('DOMContentLoaded', function () {
+        const statusEl = document.getElementById('status');
+        const resultEl = document.getElementById('result');
+
+        if (typeof window.Dropzone === 'undefined') {
+          if (statusEl) statusEl.textContent = 'Dropzone failed to load. Check your network/ad blocker.';
+          if (resultEl) resultEl.textContent = 'Dropzone library not found: https://unpkg.com/dropzone@5/';
+          console.error('Dropzone is undefined. Did the script fail to load?');
+          return;
+        }
+
+
+      const dz = new Dropzone('#csvDropzone', {
+        url: '/upload',
+        paramName: 'file',
+        maxFilesize: 70,
+        acceptedFiles: 'text/csv,.csv,.CSV',
+        timeout: 0,
+        createImageThumbnails: false,
+        clickable: '#csvDropzone',
+      });
+
+        dz.on('init', function() {statusEl.textContent = 'Ready. Drop a .csv or click the box.';});
+        dz.on('addedfile', function(file) {statusEl.textContent = 'File added: ' + (file && file.name ? file.name : '(unnamed)') + '. Ready to upload…';});
+        dz.on('sending', function() {statusEl.textContent = 'Uploading…';});
+        dz.on('totaluploadprogress', function(progress) {statusEl.textContent = 'Uploading… ' + Math.round(progress) + '%';});
+        dz.on('success', function (file, _resp) {
+          const el = document.getElementById('result');
+          let text = '';
+          try {
+            // Prefer the raw response text from XHR to avoid Dropzone parsing quirks
+            const raw = file && file.xhr ? file.xhr.responseText : '';
+            if (raw) {
+              try {
+                const parsed = JSON.parse(raw);
+                text = JSON.stringify(parsed, null, 2);
+              } catch (_e) {
+                // Not JSON; show as-is
+                text = raw;
+              }
+            } else if (typeof _resp !== 'undefined') {
+              // Fallback to Dropzone's provided resp argument
+              if (typeof _resp === 'string') {
+                text = _resp;
+              } else {
+                try { text = JSON.stringify(_resp, null, 2); } catch (_e2) { text = String(_resp); }
+              }
+            } else {
+              text = '(no response body)';
+            }
+          } catch (e) {
+            text = 'Success, but failed to read response: ' + (e && e.message ? e.message : String(e));
+          }
+          el.textContent = text;
+        });
+
+        dz.on('error', function (file, err, xhr) {
+          const el = document.getElementById('result');
+          let msg = '';
+          if (err && typeof err === 'object' && err.message) {
+            msg = err.message;
+          } else if (typeof err === 'string') {
+            msg = err;
+          } else if (xhr && xhr.responseText) {
+            msg = xhr.responseText;
+          } else if (file && file.xhr && file.xhr.responseText) {
+            msg = file.xhr.responseText;
+          } else {
+            msg = 'Unknown error';
+          }
+          el.textContent = 'Upload failed: ' + msg;
+        });
+
+        dz.on('maxfilesexceeded', function(file) {statusEl.textContent = 'Too many files. Only one file at a time.';});
+        dz.on('processing', function(file) {statusEl.textContent = 'Uploading…';});
+        dz.on('complete', function(file) {
+          const status = file && file.xhr ? file.xhr.status : '(no status)';
+          const statusText = file && file.xhr ? file.xhr.statusText : '';
+          console.log('Upload complete:', status, statusText);
+        });
+        dz.on('queuecomplete', function() {statusEl.textContent = 'Done. You can upload another file.';});
+      });
+    </script>
+  </body>
+</html>

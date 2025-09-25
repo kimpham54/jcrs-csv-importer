@@ -1,0 +1,48 @@
+:root { --fg:#1f2937; --bg:#ffffff; --muted:#6b7280; }
+html, body { height: 100%; }
+body { 
+margin: 0; 
+font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: var(--fg); 
+background: var(--bg); }
+
+.wrap { max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+
+.notice { background:#f6f7ff; border:1px solid #dfe3ff; padding:1rem; border-radius:8px; }
+pre { background:#0b1220; color:#e5e7eb; padding:1rem; border-radius:8px; overflow:auto; }
+footer { color: var(--muted); font-size: .9rem; margin-top: 2rem; }
+
+/* Dropzone visual styles */
+.dropzone {
+border: 2px dashed #cbd5e1;
+background: #fafafa;
+border-radius: 10px;
+min-height: 200px;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.dropzone .dz-message {
+text-align: center;
+font-size: 1.1rem;
+color: #4b5563;
+margin: 0 1rem;
+}
+
+.dropzone.dz-drag-hover {
+border-color: #6366f1;
+background: #f8f9ff;
+box-shadow: 0 0 0 4px rgba(99,102,241,.08) inset;
+}
+
+.status {
+display: inline-block;
+padding: .35rem .6rem;
+border-radius: 999px;
+background: #eef2ff;
+color: #3730a3;
+font-weight: 600;
+font-size: .9rem;
+margin: .75rem 0 1rem 0;
+}
