@@ -80,7 +80,7 @@ function toDbRow(row: Record<string, any>): Record<string, any> {
 
 export async function parseCsvAndInsert(
   filePath: string,
-  tableName = DEFAULT_TABLE || "records_02_13_2024",
+  tableName = DEFAULT_TABLE,
   delimiter?: string // optional, auto if omitted
 ): Promise<{ inserted: number; rows: number }> {
   const head = await readHead(filePath);
