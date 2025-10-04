@@ -37,6 +37,7 @@ function clean(val: unknown): unknown {
 
 /** CSV header -> DB column map */
 const MAP: Record<string, string> = {
+  "Aspace ID": "call_number",
   pid: "pid",
   "Last Name": "last_name",
   "First Name": "first_name",
