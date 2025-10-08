@@ -36,7 +36,9 @@ router.post("/", upload.single("file"), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const filePath = path.resolve(req.file.path);
-    const result = await parseCsvAndInsert(filePath); // uses .env DB_TABLE if set
+    // This will: parse CSV -> insert -> then (inside csvHandler) backfill handles
+    // uses .env DB_TABLE if set
+    const result = await parseCsvAndInsert(filePath);
     const message = `Successfully processed ${result.inserted || 0} rows from ${req.file.originalname}`;
     console.log(message);
 

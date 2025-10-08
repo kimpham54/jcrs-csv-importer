@@ -2,15 +2,16 @@
 import fs from "fs";
 import { parse } from "csv-parse";
 import db, { TABLE as DEFAULT_TABLE } from "../db/knex.js";
+import { getRecordUuidsAndUpdateHandlesForCallNumbers } from "./getHandles.js";
 
 function guessDelimiter(sample: string): string {
   // count candidate delimiters in the first non-empty line
   const line = sample.split(/\r?\n/).find(l => l.trim().length) ?? "";
-  const counts = [
+  const counts: Array<[string, number]> = [
     [",", (line.match(/,/g) || []).length],
     [";", (line.match(/;/g) || []).length],
     ["\t", (line.match(/\t/g) || []).length],
-  ] as const;
+  ];
   counts.sort((a, b) => b[1] - a[1]);
   return counts[0][1] > 0 ? counts[0][0] : ",";
 }
@@ -25,7 +26,7 @@ async function readHead(path: string, bytes = 8192): Promise<string> {
   });
 }
 
-/** normalize string-ish fields: trim and convert "" to null */
+/** small csv cleaner helper */
 function clean(val: unknown): unknown {
   if (val == null) return null;
   if (typeof val === "string") {
@@ -69,6 +70,13 @@ const MAP: Record<string, string> = {
   Notes: "notes",
 };
 
+/** guard to remove empty lines with delimiters */
+function isAllEmpty(obj: Record<string, any>): boolean {
+  const values = Object.values(obj);
+  if (values.length === 0) return true;
+  return values.every((v) => v == null || (typeof v === "string" && v.trim() === ""));
+}
+
 function toDbRow(row: Record<string, any>): Record<string, any> {
   const out: Record<string, any> = {};
   for (const [csvKey, dbKey] of Object.entries(MAP)) {
@@ -109,7 +117,19 @@ export async function parseCsvAndInsert(
       });
   });
 
-  const toInsert = rows.map(toDbRow);
+  const toInsert = rows.map(toDbRow).filter((r) => !isAllEmpty(r));
+
+
+  // Collect call_numbers for rows we are inserting (to target handle updates)
+  const targetCallNumbers: string[] = Array.from(
+    new Set(
+      toInsert
+        .map((r) => r.call_number)
+        .filter((v: any) => typeof v === "string" && v.trim().length > 0)
+    )
+  );
+
+
 
   const chunkSize = 500;
   let total = 0;
@@ -122,6 +142,16 @@ export async function parseCsvAndInsert(
       }
     }
   });
+
+
+  // After successful inserts, backfill handles only for these rows
+  if (targetCallNumbers.length > 0) {
+    try {
+      await getRecordUuidsAndUpdateHandlesForCallNumbers(tableName, targetCallNumbers);
+    } catch (e) {
+      console.error("Handle backfill failed:", e);
+    }
+  }
 
   return { inserted: total, rows: rows.length };
 }
